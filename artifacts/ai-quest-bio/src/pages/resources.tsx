@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ExternalLink, Database, Zap, BookOpen, Server, Cpu, Package } from "lucide-react";
+import { ExternalLink, Database, Zap, BookOpen, Server, Cpu, Package, Brain } from "lucide-react";
 
-type TabKey = "databases" | "llm" | "colab" | "kaggle" | "medgemma" | "stack";
+type TabKey = "databases" | "llm" | "colab" | "kaggle" | "medgemma" | "bioclinical" | "stack";
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "databases", label: "Biomedical Databases", icon: Database },
@@ -9,6 +9,7 @@ const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "colab", label: "Google Colab + Ollama", icon: BookOpen },
   { key: "kaggle", label: "Kaggle + Ollama", icon: Server },
   { key: "medgemma", label: "MedGemma 1.5", icon: Cpu },
+  { key: "bioclinical", label: "BioClinicalModernBERT", icon: Brain },
   { key: "stack", label: "Stack Setup", icon: Package },
 ];
 
@@ -714,6 +715,226 @@ networkx==3.3`,
   );
 }
 
+function BioClinicalModernBERTTab() {
+  return (
+    <div className="flex flex-col gap-8">
+      {/* Overview */}
+      <div className="border border-border rounded-lg p-6 bg-card" data-testid="card-bioclinical-overview">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-mono font-bold text-lg text-foreground mb-1">BioClinicalModernBERT</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+              A BERT-based transformer pretrained on clinical notes, biomedical literature, and PubMed abstracts.
+              The "ModernBERT" architecture brings updated positional encodings, longer context windows, and improved
+              training efficiency compared to the original BioBERT and BioClinicalBERT. It is the primary bi-encoder
+              used for semantic search and retrieval in this program (Quests 5, 6, and 11).
+            </p>
+          </div>
+          <a href="https://huggingface.co/models?search=bioclinical+modernbert" target="_blank" rel="noopener noreferrer"
+            data-testid="link-bioclinical-hf"
+            className="shrink-0 flex items-center gap-1 text-primary hover:underline text-sm font-mono">
+            HuggingFace <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          {[
+            { label: "Architecture", value: "ModernBERT encoder" },
+            { label: "Context window", value: "8192 tokens" },
+            { label: "Embedding dim", value: "768 / 1024" },
+            { label: "Training data", value: "PubMed + clinical notes" },
+          ].map((s) => (
+            <div key={s.label} className="border border-border rounded p-3 bg-muted/20 text-center">
+              <p className="font-mono text-sm font-bold text-primary mb-1">{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Why BioClinicalModernBERT vs alternatives */}
+      <div className="border border-border rounded-lg p-6 bg-card">
+        <p className="font-mono text-xs text-primary uppercase tracking-widest mb-4">Why BioClinicalModernBERT vs alternatives</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-4 text-muted-foreground font-normal">Model</th>
+                <th className="text-left py-2 pr-4 text-muted-foreground font-normal">Domain</th>
+                <th className="text-left py-2 pr-4 text-muted-foreground font-normal">Context</th>
+                <th className="text-left py-2 pr-4 text-muted-foreground font-normal">Best for</th>
+                <th className="text-left py-2 text-muted-foreground font-normal">Program role</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {[
+                ["BioClinicalModernBERT", "Clinical + PubMed", "8192 tok", "Biomedical retrieval", "Primary bi-encoder (Q5, Q6, Q11)"],
+                ["all-MiniLM-L6-v2", "General", "512 tok", "Fast general embeddings", "Baseline comparison only"],
+                ["BioBERT", "PubMed", "512 tok", "NER, classification", "NLP foundations (Q4)"],
+                ["PubMedBERT", "PubMed", "512 tok", "Biomedical QA", "Alternative bi-encoder"],
+                ["DeBERTa (cross-encoder)", "General", "512 tok", "Reranking pairs", "Stage 2 reranking (Q6)"],
+              ].map(([model, domain, ctx, use, role]) => (
+                <tr key={model} className={model === "BioClinicalModernBERT" ? "bg-primary/5" : ""}>
+                  <td className={`py-2 pr-4 ${model === "BioClinicalModernBERT" ? "text-primary font-bold" : "text-foreground"}`}>{model}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{domain}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{ctx}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{use}</td>
+                  <td className="py-2 text-muted-foreground">{role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Installation */}
+      <div className="border border-border rounded-lg overflow-hidden bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="font-mono font-semibold text-sm text-foreground">Installation</p>
+        </div>
+        <div className="p-4">
+          <CodeBlock lang="bash" code={`pip install sentence-transformers transformers torch
+# For GPU-accelerated indexing:
+pip install faiss-gpu  # instead of faiss-cpu`} />
+        </div>
+      </div>
+
+      {/* Load and embed */}
+      <div className="border border-border rounded-lg overflow-hidden bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="font-mono font-semibold text-sm text-foreground">Loading & generating embeddings (Quest 5)</p>
+        </div>
+        <div className="p-4">
+          <CodeBlock code={`from sentence_transformers import SentenceTransformer
+import numpy as np
+
+# Load BioClinicalModernBERT as a bi-encoder
+model = SentenceTransformer("NovaSky-Berkeley/BioClinicalModernBERT-base")
+# Alternative: "HealthNLP/BioClinicalBERT-sentence-transformers"
+
+# Embed a list of PubMed abstracts
+abstracts = [
+    "BRCA1 mutations are associated with hereditary breast and ovarian cancer.",
+    "EGFR L858R variant shows high sensitivity to tyrosine kinase inhibitors.",
+    "TP53 loss of function mutations are frequent in colorectal carcinoma.",
+]
+
+# Encode — returns numpy array of shape (n_abstracts, embedding_dim)
+embeddings = model.encode(
+    abstracts,
+    batch_size=32,
+    show_progress_bar=True,
+    normalize_embeddings=True  # Important for cosine similarity with dot product
+)
+
+print(f"Embedding shape: {embeddings.shape}")  # e.g. (3, 768)
+np.save("abstract_embeddings.npy", embeddings)`} />
+        </div>
+      </div>
+
+      {/* FAISS index */}
+      <div className="border border-border rounded-lg overflow-hidden bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="font-mono font-semibold text-sm text-foreground">Building & querying a FAISS index (Quest 5)</p>
+        </div>
+        <div className="p-4">
+          <CodeBlock code={`import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer("NovaSky-Berkeley/BioClinicalModernBERT-base")
+
+# Load pre-computed embeddings
+embeddings = np.load("abstract_embeddings.npy").astype("float32")
+dim = embeddings.shape[1]
+
+# Build inner-product index (equivalent to cosine sim when embeddings are normalized)
+index = faiss.IndexFlatIP(dim)
+index.add(embeddings)
+
+# Save index
+faiss.write_index(index, "bioclinical_faiss.index")
+
+# --- Query ---
+query = "EGFR mutation lung cancer targeted therapy"
+query_embedding = model.encode([query], normalize_embeddings=True).astype("float32")
+
+scores, indices = index.search(query_embedding, k=5)
+
+print("Top-5 results:")
+for rank, (idx, score) in enumerate(zip(indices[0], scores[0])):
+    print(f"  Rank {rank+1} | Score: {score:.4f} | Abstract #{idx}")`} />
+        </div>
+      </div>
+
+      {/* Cross-encoder pipeline */}
+      <div className="border border-border rounded-lg overflow-hidden bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="font-mono font-semibold text-sm text-foreground">Two-stage pipeline: BioClinicalModernBERT + DeBERTa reranker (Quest 6)</p>
+        </div>
+        <div className="p-4">
+          <CodeBlock code={`from sentence_transformers import SentenceTransformer, CrossEncoder
+import faiss
+import numpy as np
+
+bi_encoder = SentenceTransformer("NovaSky-Berkeley/BioClinicalModernBERT-base")
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+# Biomedical cross-encoder alternative:
+# cross_encoder = CrossEncoder("cross-encoder/nli-deberta-v3-small")
+
+def two_stage_retrieve(query: str, abstracts: list[str], embeddings: np.ndarray, top_k: int = 5):
+    # Stage 1: Bi-encoder fast retrieval
+    index = faiss.read_index("bioclinical_faiss.index")
+    q_emb = bi_encoder.encode([query], normalize_embeddings=True).astype("float32")
+    _, candidate_ids = index.search(q_emb, k=50)  # retrieve top-50 candidates
+
+    # Stage 2: Cross-encoder reranking
+    pairs = [(query, abstracts[i]) for i in candidate_ids[0]]
+    scores = cross_encoder.predict(pairs)
+
+    # Sort by cross-encoder score, return top_k
+    ranked = sorted(zip(candidate_ids[0], scores), key=lambda x: x[1], reverse=True)
+    return ranked[:top_k]
+
+results = two_stage_retrieve("BRCA1 mutation ovarian cancer treatment", abstracts, embeddings)
+for idx, score in results:
+    print(f"Score: {score:.4f} | {abstracts[idx][:80]}...")`} />
+        </div>
+      </div>
+
+      {/* Use in research copilot */}
+      <div className="border border-border rounded-lg p-6 bg-card">
+        <p className="font-mono text-xs text-primary uppercase tracking-widest mb-3">Role in the program</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              quest: "Quest 5",
+              role: "Primary bi-encoder for semantic search",
+              detail: "Embed 500+ PubMed abstracts. Build FAISS index. Compare vs BM25 on 10 test queries.",
+            },
+            {
+              quest: "Quest 6",
+              role: "Stage 1 of two-stage retrieval",
+              detail: "Fast candidate retrieval (top-50). Feeds into DeBERTa cross-encoder reranker. Evaluated with nDCG@5 and MRR.",
+            },
+            {
+              quest: "Quest 11",
+              role: "Retrieval engine in the biomedical copilot",
+              detail: "Powers the pubmed_search() tool in the research agent. Provides semantically relevant abstracts as context for MedGemma.",
+            },
+          ].map((item) => (
+            <div key={item.quest} className="border border-border rounded p-4 bg-muted/20">
+              <p className="font-mono text-xs text-primary mb-1">{item.quest}</p>
+              <p className="font-mono text-sm font-semibold text-foreground mb-2">{item.role}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{item.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Resources() {
   const [activeTab, setActiveTab] = useState<TabKey>("databases");
 
@@ -756,6 +977,7 @@ export default function Resources() {
           {activeTab === "colab" && <ColabTab />}
           {activeTab === "kaggle" && <KaggleTab />}
           {activeTab === "medgemma" && <MedGemmaTab />}
+          {activeTab === "bioclinical" && <BioClinicalModernBERTTab />}
           {activeTab === "stack" && <StackTab />}
         </div>
       </section>
